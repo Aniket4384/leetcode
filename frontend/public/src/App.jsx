@@ -1,7 +1,7 @@
 import {  Routes, Route,Navigate } from "react-router";
 import Signup from "./pages/Signup";
 import Homepage from "./pages/Homepage";
-import Login from "./pages/login";
+import Login from "./pages/Login";
 import {checkAuth} from "./authSlice"
 import { useDispatch ,useSelector} from "react-redux";
 import { useEffect } from "react";
