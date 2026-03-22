@@ -13,7 +13,7 @@ const videoRouter = require("./routes/videoCreator")
 const cors = require("cors")
 
 app.use(cors({
-  origin: 'http://localhost:5173',
+  origin: 'https://coding-l9a3.onrender.com',
   //if origin : '*' anyone can access it any host can access backend
   credentials :true
 }))
