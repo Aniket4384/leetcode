@@ -19,9 +19,7 @@ const register = async (req,res)=>{   // always register as user
             _id: user._id
 
         }
-        res.cookie('token',token,{maxAge:60*60*1000,httpOnly: true,
-  secure: true,
-  sameSite: "None"})
+        res.cookie('token',token,{httpOnly:true,secure:true,sameSite: "None", maxAge:60*60*1000})
         res.status(201).json({
             user:reply,
             message: "registered successfully"
@@ -59,13 +57,7 @@ const login = async (req,res)=>{
 
         }
         const token = jwt.sign({_id:user._id , emailId:emailId,role: user.role}, process.env.JWT_SECRET_KEY ,{expiresIn:60*60})
-        res.cookie("token", token, {
-      httpOnly: true,       // JS cannot access → safe
-      secure: false,        // keep false for localhost (no https)
-      sameSite: "lax",      // REQUIRED for cross-origin cookies
-      path: "/",            // cookie available everywhere
-      maxAge: 60 * 60 * 1000
-    });
+        res.cookie("token", token,{httpOnly:true,secure:true,sameSite: "None", maxAge:60*60*1000});
          res.status(201).json({
             user: reply,
             message: "login successfully"
@@ -103,11 +95,8 @@ const adminRegister = async(req,res)=>{
         // req.body.role = 'admin'
         const user = await User.create(req.body)
         const token = jwt.sign({_id:user._id , emailId:emailId ,role:user.role}, process.env.JWT_SECRET_KEY ,{expiresIn:60*60})
-        res.cookie('token',token,{maxAge:60*60*1000,
-                                  httpOnly: true,
-                       secure: true,
-                    sameSite: "None"})
-        res.status(201).send("user registered successfully")
+        res.cookie('token',token,{httpOnly:true,secure:true,sameSite: "None", maxAge:60*60*1000})
+        res.status(201).send("admin registered successfully")
     }
 
     catch(err){
