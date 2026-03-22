@@ -5,11 +5,11 @@ import { useSelector, useDispatch } from "react-redux";
 import { z } from "zod";
 import { loginUser } from "../authSlice";
 import { useEffect, useState } from "react";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Code, ArrowRight } from "lucide-react";
 
 const signupSchema = z.object({
   emailId: z.string().email("Invalid Email"),
-  password: z.string().min(8, "Password is too weak"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
 });
 
 function Login() {
@@ -27,7 +27,6 @@ function Login() {
     formState: { errors },
   } = useForm({ resolver: zodResolver(signupSchema) });
 
-  // Sync error from Redux to local state
   useEffect(() => {
     if (error) {
       setLocalError(error);
@@ -35,9 +34,8 @@ function Login() {
   }, [error]);
 
   const onSubmit = (data) => {
-    setLocalError(null); // Clear previous error before new submission
+    setLocalError(null);
     dispatch(loginUser(data));
-    console.log(data);
   };
 
   useEffect(() => {
@@ -47,93 +45,95 @@ function Login() {
   }, [isAuthenticated, navigate]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      <div className="card w-96 bg-white shadow-2xl rounded-2xl overflow-hidden">
-        <div className="card-body p-8">
-          <h2 className="card-title justify-center text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-4">
-            LeetCode
-          </h2>
-          
-          <form onSubmit={handleSubmit(onSubmit)}>
-            {/* Backend Error Display */}
-            {localError && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg animate-shake">
-                <p className="text-red-600 text-sm font-medium text-center">
-                  {localError}
-                </p>
+    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-[#0a0f1a] via-[#0b1220] to-[#0c1424]">
+      <div className="w-full max-w-md">
+        <div className="bg-[#071026] rounded-2xl shadow-2xl border border-[#1f2937]">
+          <div className="p-8">
+            {/* Logo and Title */}
+            <div className="text-center mb-8">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 shadow-lg mb-4">
+                <Code className="w-8 h-8 text-white" />
               </div>
-            )}
-
-            {/* Email Field */}
-            <div className="form-control mt-4">
-              <label className="label mb-1">
-                <span className="label-text font-medium text-gray-700">Email</span>
-              </label>
-              <input
-                type="email"
-                placeholder="john@example.com"
-                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all ${
-                  errors.emailId 
-                    ? "border-red-500 focus:ring-red-200" 
-                    : "border-gray-300 focus:border-blue-500"
-                }`}
-                {...register("emailId")}
-                onChange={(e) => {
-                  register("emailId").onChange(e);
-                  if (localError) setLocalError(null); // Clear error when user types
-                }}
-              />
-              {errors.emailId && (
-                <span className="text-xs text-red-500 mt-1 font-medium">{errors.emailId.message}</span>
-              )}
+              <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                CodeForge
+              </h2>
+              <p className="text-gray-400 text-sm mt-2">
+                Welcome back! Please login to your account
+              </p>
             </div>
+            
+            <form onSubmit={handleSubmit(onSubmit)}>
+              {/* Error Display */}
+              {localError && (
+                <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
+                  <p className="text-red-400 text-sm font-medium text-center">
+                    {localError}
+                  </p>
+                </div>
+              )}
 
-            {/* Password Field */}
-            <div className="form-control mt-4">
-              <label className="label mb-1">
-                <span className="label-text font-medium text-gray-700">Password</span>
-              </label>
-              <div className="relative">
+              {/* Email Field */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Email Address
+                </label>
                 <input
-                  type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
-                  className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all pr-10 ${
-                    errors.password 
-                      ? "border-red-500 focus:ring-red-200" 
-                      : "border-gray-300 focus:border-blue-500"
+                  type="email"
+                  placeholder="john@example.com"
+                  className={`w-full px-4 py-3 bg-[#0f1728] border rounded-lg focus:outline-none focus:ring-2 transition-all text-gray-100 placeholder-gray-500 ${
+                    errors.emailId 
+                      ? "border-red-500 focus:ring-red-500/20" 
+                      : "border-[#1f2937] focus:border-blue-500 focus:ring-blue-500/20"
                   }`}
-                  {...register("password")}
+                  {...register("emailId")}
                   onChange={(e) => {
-                    register("password").onChange(e);
-                    if (localError) setLocalError(null); // Clear error when user types
+                    register("emailId").onChange(e);
+                    if (localError) setLocalError(null);
                   }}
                 />
-                <button
-                  type="button"
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
-                  onClick={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                </button>
+                {errors.emailId && (
+                  <p className="text-xs text-red-400 mt-1">{errors.emailId.message}</p>
+                )}
               </div>
-              {errors.password && (
-                <span className="text-xs text-red-500 mt-1 font-medium">{errors.password.message}</span>
-              )}
-            </div>
 
-            {/* Forgot Password Link */}
-            <div className="text-right mt-2">
-              <Link to="/forgot-password" className="text-xs text-blue-600 hover:text-blue-500 hover:underline">
-                Forgot Password?
-              </Link>
-            </div>
+              {/* Password Field */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Password
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    className={`w-full px-4 py-3 bg-[#0f1728] border rounded-lg focus:outline-none focus:ring-2 transition-all pr-10 text-gray-100 placeholder-gray-500 ${
+                      errors.password 
+                        ? "border-red-500 focus:ring-red-500/20" 
+                        : "border-[#1f2937] focus:border-blue-500 focus:ring-blue-500/20"
+                    }`}
+                    {...register("password")}
+                    onChange={(e) => {
+                      register("password").onChange(e);
+                      if (localError) setLocalError(null);
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+                {errors.password && (
+                  <p className="text-xs text-red-400 mt-1">{errors.password.message}</p>
+                )}
+              </div>
 
-            {/* Submit Button */}
-            <div className="form-control mt-6">
+              {/* Submit Button */}
               <button 
                 type="submit" 
                 disabled={loading}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-70 disabled:cursor-not-allowed flex justify-center items-center gap-2"
+                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-3 rounded-lg transition-all duration-200 shadow-lg disabled:opacity-70 disabled:cursor-not-allowed flex justify-center items-center gap-2"
               >
                 {loading ? (
                   <>
@@ -141,24 +141,27 @@ function Login() {
                     <span>Logging in...</span>
                   </>
                 ) : (
-                  "Log In"
+                  <>
+                    <span>Log In</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </>
                 )}
               </button>
-            </div>
 
-            {/* Sign Up Link */}
-            <div className="mt-6 text-center">
-              <p className="text-sm text-gray-600">
-                Don't have an account?{' '}
-                <Link
-                  to="/signup"
-                  className="font-medium text-blue-600 hover:text-blue-500 hover:underline transition-colors"
-                >
-                  Sign up here
-                </Link>
-              </p>
-            </div>
-          </form>
+              {/* Sign Up Link */}
+              <div className="mt-6 text-center">
+                <p className="text-sm text-gray-400">
+                  Don't have an account?{' '}
+                  <Link
+                    to="/signup"
+                    className="font-medium text-blue-400 hover:text-blue-300 hover:underline"
+                  >
+                    Sign up here
+                  </Link>
+                </p>
+              </div>
+            </form>
+          </div>
         </div>
       </div>
     </div>
