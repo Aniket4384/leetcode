@@ -1,6 +1,6 @@
 import axios from "axios"
 const axiosClient = axios.create({
-  baseURL: 'http://localhost:3000',
+  baseURL: 'https://coding-platform-ryin.onrender.com',
   withCredentials : true, // inform browser to attch cookie with it
   headers: {'Content-Type': 'application/json'}
 });
