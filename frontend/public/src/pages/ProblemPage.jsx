@@ -5,7 +5,7 @@ import { useParams } from 'react-router';
 import axiosClient from "../utility/axiosClient";
 import ChatAi from "../components/ChatAi";
 import Editorials from '../components/Editorials';
-import { Play, Send, Code2, FileText, BookOpen, Lightbulb, MessageSquare, History, ChevronDown, ChevronUp, CheckCircle, XCircle, Clock, MemoryStick, Terminal, Eye } from 'lucide-react';
+import { Play, Send, Code2, FileText, BookOpen, Lightbulb, MessageSquare, History, ChevronDown, ChevronUp, CheckCircle, XCircle, Clock, MemoryStick, Terminal, Eye, Menu, X } from 'lucide-react';
 
 const ProblemPage = () => {
   const [problem, setProblem] = useState(null);
@@ -20,13 +20,23 @@ const ProblemPage = () => {
   const [loadingSubmissions, setLoadingSubmissions] = useState(false);
   const [isTestCasesExpanded, setIsTestCasesExpanded] = useState(true);
   const [fontSize, setFontSize] = useState(14);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const editorRef = useRef(null);
   let {problemId} = useParams();
 
   const { handleSubmit } = useForm();
   
-  // ✅ REMOVED hardcoded languageTemplates
-  
+  // Check if mobile on mount and resize
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
   // Get code template from problem data
   const getCodeTemplate = () => {
     if (problem && problem.startCode && problem.startCode.length > 0) {
@@ -42,7 +52,7 @@ const ProblemPage = () => {
       }
     }
     
-    // ✅ Default fallback - simple template
+    // Default fallback - simple template
     const fallbackTemplates = {
       javascript: '// Write your solution here\n\n',
       java: 'public class Main {\n    public static void main(String[] args) {\n        // Write your solution here\n    }\n}',
@@ -59,7 +69,7 @@ const ProblemPage = () => {
         const response = await axiosClient.get(`/problem/problemById/${problemId}`);
         setProblem(response.data);
         
-        // ✅ Get code from problem's startCode
+        // ✅ Only set initial code, no other pre-filled solutions
         if (response.data.startCode && response.data.startCode.length > 0) {
           const template = response.data.startCode.find(sc => {
             if (sc.language === "c++" && selectedLanguage === 'cpp') return true;
@@ -94,7 +104,7 @@ const ProblemPage = () => {
     }
   }, [activeLeftTab]);
 
-  // ✅ Update code when language changes - from problem's startCode
+  // Update code when language changes - from problem's startCode
   useEffect(() => {
     if (problem && problem.startCode && problem.startCode.length > 0) {
       const template = problem.startCode.find(sc => {
@@ -317,6 +327,21 @@ const ProblemPage = () => {
     setCode(getCodeTemplate());
   };
 
+  // Mobile menu tabs
+  const leftTabs = [
+    { id: 'description', icon: FileText, label: 'Description' },
+    { id: 'editorial', icon: BookOpen, label: 'Editorial' },
+    { id: 'solutions', icon: Lightbulb, label: 'Solutions' },
+    { id: 'submissions', icon: History, label: 'Submissions' },
+    { id: 'chatAI', icon: MessageSquare, label: 'AI Assistant' }
+  ];
+
+  const rightTabs = [
+    { id: 'code', icon: Code2, label: 'Code' },
+    { id: 'testcase', icon: Terminal, label: 'Test Cases' },
+    { id: 'result', icon: CheckCircle, label: 'Result' }
+  ];
+
   if (loading && !problem) {
     return (
       <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-slate-900 to-slate-800">
@@ -328,22 +353,393 @@ const ProblemPage = () => {
     );
   }
 
+  // Mobile view
+  if (isMobile) {
+    return (
+      <div className="h-screen flex flex-col bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-gray-100">
+        {/* Mobile Header */}
+        <div className="flex items-center justify-between p-4 bg-slate-800/50 border-b border-slate-700">
+          <h1 className="text-lg font-bold truncate flex-1">{problem?.title || 'Problem'}</h1>
+          <button
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="p-2 hover:bg-slate-700 rounded-lg transition-colors"
+          >
+            {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
+        </div>
+
+        {/* Mobile Menu Drawer */}
+        {isMobileMenuOpen && (
+          <div className="absolute top-14 left-0 right-0 bg-slate-800 border-b border-slate-700 z-50 shadow-xl">
+            <div className="grid grid-cols-2 gap-1 p-2">
+              {leftTabs.map(tab => (
+                <button
+                  key={tab.id}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all ${
+                    activeLeftTab === tab.id
+                      ? 'bg-blue-600 text-white'
+                      : 'text-gray-400 hover:bg-slate-700'
+                  }`}
+                  onClick={() => {
+                    setActiveLeftTab(tab.id);
+                    setIsMobileMenuOpen(false);
+                  }}
+                >
+                  <tab.icon className="w-4 h-4" />
+                  <span className="text-xs">{tab.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Content Area - Single Column for Mobile */}
+        <div className="flex-1 overflow-y-auto">
+          {/* Problem Content */}
+          <div className="p-4">
+            {problem && (
+              <>
+                {activeLeftTab === 'description' && (
+                  <div className="animate-fadeIn">
+                    <div className="flex items-center gap-2 mb-4 flex-wrap">
+                      <h1 className="text-xl font-bold text-white">{problem.title}</h1>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getDifficultyColor(problem.difficulty)}`}>
+                        {problem.difficulty?.charAt(0).toUpperCase() + problem.difficulty?.slice(1)}
+                      </span>
+                      <span className="px-2 py-1 rounded-full text-xs font-medium bg-purple-500/20 text-purple-400">
+                        {problem.tags}
+                      </span>
+                    </div>
+
+                    <div className="prose prose-invert max-w-none text-sm">
+                      <div className="whitespace-pre-wrap text-gray-300 leading-relaxed">
+                        {problem.description}
+                      </div>
+                    </div>
+
+                    <div className="mt-6">
+                      <h3 className="text-md font-semibold mb-3 flex items-center gap-2">
+                        <Terminal className="w-4 h-4 text-blue-400" />
+                        Examples:
+                      </h3>
+                      <div className="space-y-3">
+                        {problem?.visibleTestCases && problem.visibleTestCases.length > 0 ? (
+                          problem.visibleTestCases.map((example, index) => (
+                            <div key={index} className="bg-slate-800/50 border border-slate-700 rounded-lg overflow-hidden">
+                              <div className="bg-slate-800 px-3 py-2 border-b border-slate-700">
+                                <h4 className="font-semibold text-xs">Example {index + 1}</h4>
+                              </div>
+                              <div className="p-3 space-y-1 text-xs font-mono">
+                                <div><span className="text-blue-400">Input:</span> {example.input || 'No input'}</div>
+                                <div><span className="text-emerald-400">Output:</span> {example.output || 'No output'}</div>
+                                {example.explanation && (
+                                  <div><span className="text-yellow-400">Explanation:</span> {example.explanation}</div>
+                                )}
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="text-gray-500 text-center py-6 text-sm">No examples available for this problem.</div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {activeLeftTab === 'editorial' && (
+                  <Editorials secureUrl={problem.secureUrl} thumbnailUrl={problem.secureUrl} duration={problem.duration} />
+                )}
+
+                {activeLeftTab === 'solutions' && (
+                  <div>
+                    <h2 className="text-lg font-bold mb-3 flex items-center gap-2">
+                      <Lightbulb className="w-4 h-4 text-yellow-400" />
+                      Reference Solutions
+                    </h2>
+                    <div className="space-y-4">
+                      {problem.referenceSolution && problem.referenceSolution.length > 0 ? (
+                        problem.referenceSolution.map((solution, index) => (
+                          <div key={index} className="border border-slate-700 rounded-lg overflow-hidden">
+                            <div className="bg-slate-800 px-3 py-2 flex justify-between items-center">
+                              <h3 className="font-semibold text-sm">{problem.title} - {solution?.language || 'Unknown'}</h3>
+                              <button 
+                                className="text-xs text-blue-400 hover:text-blue-300"
+                                onClick={() => {
+                                  setCode(solution?.completeCode || '');
+                                  setSelectedLanguage(solution?.language === 'cpp' ? 'cpp' : solution?.language === 'java' ? 'java' : 'javascript');
+                                  setActiveRightTab('code');
+                                }}
+                              >
+                                Use this code
+                              </button>
+                            </div>
+                            <div className="p-3 bg-slate-900/50">
+                              <pre className="text-xs overflow-x-auto">
+                                <code className="text-gray-300">{solution?.completeCode?.substring(0, 200) || 'No code available'}{solution?.completeCode?.length > 200 ? '...' : ''}</code>
+                              </pre>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-gray-500 text-center py-6 text-sm">Solutions will be available after you solve the problem.</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {activeLeftTab === 'submissions' && (
+                  <div>
+                    <div className="flex justify-between items-center mb-3">
+                      <h2 className="text-lg font-bold flex items-center gap-2">
+                        <History className="w-4 h-4 text-blue-400" />
+                        Submissions
+                      </h2>
+                      <button 
+                        className="px-2 py-1 text-xs bg-slate-800 hover:bg-slate-700 rounded-lg"
+                        onClick={fetchSubmissions}
+                        disabled={loadingSubmissions}
+                      >
+                        {loadingSubmissions ? (
+                          <div className="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                        ) : (
+                          'Refresh'
+                        )}
+                      </button>
+                    </div>
+                    
+                    {loadingSubmissions ? (
+                      <div className="flex justify-center items-center py-8">
+                        <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                      </div>
+                    ) : submissions.length > 0 ? (
+                      <div className="space-y-2">
+                        {submissions.map((submission, index) => (
+                          <div key={submission._id || submission.submissionId || index} className="bg-slate-800/50 border border-slate-700 rounded-lg p-3">
+                            <div className="flex items-center justify-between flex-wrap gap-2">
+                              <div className="flex items-center gap-2">
+                                {submission.status?.toLowerCase().includes('accepted') ? (
+                                  <CheckCircle className="w-4 h-4 text-emerald-400" />
+                                ) : (
+                                  <XCircle className="w-4 h-4 text-red-400" />
+                                )}
+                                <div>
+                                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(submission.status)}`}>
+                                    {submission.status || 'Pending'}
+                                  </span>
+                                  <p className="text-xs text-gray-500 mt-1">{formatDate(submission.submittedAt || submission.createdAt)}</p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2 text-xs">
+                                <span className="text-gray-400">{submission.language?.toUpperCase() || 'N/A'}</span>
+                                {submission.code && (
+                                  <button
+                                    className="px-2 py-0.5 text-xs bg-blue-500/20 text-blue-400 rounded"
+                                    onClick={() => handleViewCode(submission.code)}
+                                  >
+                                    View Code
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-gray-500">
+                        <p className="text-sm">No submissions yet</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {activeLeftTab === 'chatAI' && (
+                  <ChatAi problem={problem} />
+                )}
+              </>
+            )}
+          </div>
+
+          {/* Code Editor Section - Always visible at bottom for mobile */}
+          <div className="border-t border-slate-700 bg-slate-900">
+            {/* Code Tabs */}
+            <div className="flex border-b border-slate-700 bg-slate-800/50 px-2 gap-1 overflow-x-auto">
+              {rightTabs.map(tab => (
+                <button
+                  key={tab.id}
+                  className={`flex items-center gap-1 px-3 py-2 text-xs font-medium whitespace-nowrap transition-all border-b-2 ${
+                    activeRightTab === tab.id
+                      ? 'border-blue-500 text-blue-400'
+                      : 'border-transparent text-gray-400'
+                  }`}
+                  onClick={() => setActiveRightTab(tab.id)}
+                >
+                  <tab.icon className="w-3 h-3" />
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Code Content */}
+            <div className="h-80 flex flex-col">
+              {activeRightTab === 'code' && (
+                <>
+                  <div className="flex flex-wrap gap-2 p-3 border-b border-slate-700">
+                    <div className="flex gap-1 flex-wrap">
+                      {[
+                        { id: 'javascript', name: 'JS', icon: '🟨' },
+                        { id: 'java', name: 'Java', icon: '☕' },
+                        { id: 'cpp', name: 'C++', icon: '⚙️' }
+                      ].map((lang) => (
+                        <button
+                          key={lang.id}
+                          className={`px-3 py-1 rounded-lg text-xs font-medium transition-all ${
+                            selectedLanguage === lang.id
+                              ? 'bg-blue-600 text-white'
+                              : 'bg-slate-700 text-gray-300'
+                          }`}
+                          onClick={() => handleLanguageChange(lang.id)}
+                        >
+                          {lang.name}
+                        </button>
+                      ))}
+                    </div>
+                    <button
+                      className="px-2 py-1 text-xs bg-slate-700 rounded-lg"
+                      onClick={handleResetCode}
+                    >
+                      Reset
+                    </button>
+                  </div>
+                  <div className="flex-1">
+                    <Editor
+                      height="100%"
+                      language={getLanguageForMonaco(selectedLanguage)}
+                      value={code}
+                      onChange={handleEditorChange}
+                      onMount={handleEditorDidMount}
+                      theme="vs-dark"
+                      options={{
+                        fontSize: fontSize,
+                        minimap: { enabled: false },
+                        scrollBeyondLastLine: false,
+                        automaticLayout: true,
+                        tabSize: 2,
+                        wordWrap: 'on',
+                      }}
+                    />
+                  </div>
+                  <div className="p-3 border-t border-slate-700 flex gap-2">
+                    <button
+                      className={`flex-1 py-2 rounded-lg font-medium text-sm transition-all flex items-center justify-center gap-2 ${
+                        loading ? 'bg-gray-600' : 'bg-slate-700'
+                      }`}
+                      onClick={handleRun}
+                      disabled={loading}
+                    >
+                      <Play className="w-3 h-3" />
+                      Run
+                    </button>
+                    <button
+                      className={`flex-1 py-2 rounded-lg font-medium text-sm transition-all flex items-center justify-center gap-2 ${
+                        loading ? 'bg-gray-600' : 'bg-blue-600'
+                      }`}
+                      onClick={handleSubmitCode}
+                      disabled={loading}
+                    >
+                      <Send className="w-3 h-3" />
+                      Submit
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {activeRightTab === 'testcase' && (
+                <div className="flex-1 overflow-y-auto p-3">
+                  {runResult ? (
+                    <div className="space-y-3">
+                      <div className={`p-3 rounded-lg text-sm ${
+                        runResult.success ? 'bg-emerald-500/10 border border-emerald-500/30' : 'bg-red-500/10 border border-red-500/30'
+                      }`}>
+                        <div className="flex items-center gap-2">
+                          {runResult.success ? (
+                            <CheckCircle className="w-4 h-4 text-emerald-400" />
+                          ) : (
+                            <XCircle className="w-4 h-4 text-red-400" />
+                          )}
+                          <span className="font-medium">
+                            {runResult.success ? 'All tests passed!' : runResult.error || 'Execution Failed'}
+                          </span>
+                        </div>
+                      </div>
+                      {runResult.testCases && runResult.testCases.length > 0 && (
+                        <div className="space-y-2">
+                          {runResult.testCases.map((tc, i) => (
+                            <div key={i} className="bg-slate-800/50 border border-slate-700 rounded-lg p-2 text-xs">
+                              <div className="space-y-1">
+                                <div><span className="text-blue-400">Input:</span> {tc.stdin || tc.input || 'N/A'}</div>
+                                <div><span className="text-emerald-400">Expected:</span> {tc.expected_output || tc.expectedOutput || 'N/A'}</div>
+                                <div><span className="text-yellow-400">Output:</span> {tc.stdout || tc.output || 'N/A'}</div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-gray-500 text-sm">
+                      <Play className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                      <p>Click "Run" to test</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {activeRightTab === 'result' && (
+                <div className="flex-1 overflow-y-auto p-3">
+                  {submitResult ? (
+                    <div className={`p-3 rounded-lg text-sm ${
+                      submitResult.accepted ? 'bg-emerald-500/10 border border-emerald-500/30' : 'bg-red-500/10 border border-red-500/30'
+                    }`}>
+                      <div className="flex items-center gap-2 mb-2">
+                        {submitResult.accepted ? (
+                          <CheckCircle className="w-4 h-4 text-emerald-400" />
+                        ) : (
+                          <XCircle className="w-4 h-4 text-red-400" />
+                        )}
+                        <span className="font-medium">{submitResult.status || (submitResult.accepted ? 'Accepted' : 'Failed')}</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div>Test Cases: {submitResult.passedTestCases || 0}/{submitResult.totalTestCases || 0}</div>
+                        <div>Runtime: {submitResult.runtime ? `${submitResult.runtime} ms` : 'N/A'}</div>
+                        <div>Memory: {submitResult.memory ? `${submitResult.memory} KB` : 'N/A'}</div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-gray-500 text-sm">
+                      <Send className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                      <p>Click "Submit" to evaluate</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Desktop view (original layout with improvements)
   return (
     <div className="h-screen flex bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-gray-100">
       {/* Left Panel */}
       <div className="w-1/2 flex flex-col border-r border-slate-700 bg-slate-900/50">
         {/* Left Tabs */}
-        <div className="flex border-b border-slate-700 bg-slate-800/50 px-4 gap-1">
-          {[
-            { id: 'description', icon: FileText, label: 'Description' },
-            { id: 'editorial', icon: BookOpen, label: 'Editorial' },
-            { id: 'solutions', icon: Lightbulb, label: 'Solutions' },
-            { id: 'submissions', icon: History, label: 'Submissions' },
-            { id: 'chatAI', icon: MessageSquare, label: 'AI Assistant' }
-          ].map(tab => (
+        <div className="flex border-b border-slate-700 bg-slate-800/50 px-4 gap-1 overflow-x-auto">
+          {leftTabs.map(tab => (
             <button
               key={tab.id}
-              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-all duration-200 border-b-2 ${
+              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-all duration-200 border-b-2 whitespace-nowrap ${
                 activeLeftTab === tab.id
                   ? 'border-blue-500 text-blue-400 bg-slate-800/50'
                   : 'border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-600'
@@ -356,7 +752,7 @@ const ProblemPage = () => {
           ))}
         </div>
 
-        {/* Left Content - Keep same as before */}
+        {/* Left Content */}
         <div className="flex-1 overflow-y-auto p-6 scrollbar-thin scrollbar-track-slate-800 scrollbar-thumb-slate-600">
           {problem && (
             <>
@@ -559,15 +955,11 @@ const ProblemPage = () => {
       {/* Right Panel */}
       <div className="w-1/2 flex flex-col bg-slate-900">
         {/* Right Tabs */}
-        <div className="flex border-b border-slate-700 bg-slate-800/50 px-4 gap-1">
-          {[
-            { id: 'code', icon: Code2, label: 'Code' },
-            { id: 'testcase', icon: Terminal, label: 'Test Cases' },
-            { id: 'result', icon: CheckCircle, label: 'Result' }
-          ].map(tab => (
+        <div className="flex border-b border-slate-700 bg-slate-800/50 px-4 gap-1 overflow-x-auto">
+          {rightTabs.map(tab => (
             <button
               key={tab.id}
-              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-all duration-200 border-b-2 ${
+              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-all duration-200 border-b-2 whitespace-nowrap ${
                 activeRightTab === tab.id
                   ? 'border-blue-500 text-blue-400 bg-slate-800/50'
                   : 'border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-600'
@@ -585,8 +977,8 @@ const ProblemPage = () => {
           {activeRightTab === 'code' && (
             <div className="flex-1 flex flex-col">
               {/* Language Selector and Controls */}
-              <div className="flex justify-between items-center p-4 border-b border-slate-700 bg-slate-800/30">
-                <div className="flex gap-2">
+              <div className="flex justify-between items-center p-4 border-b border-slate-700 bg-slate-800/30 flex-wrap gap-3">
+                <div className="flex gap-2 flex-wrap">
                   {[
                     { id: 'javascript', name: 'JavaScript', icon: '🟨' },
                     { id: 'java', name: 'Java', icon: '☕' },
@@ -606,7 +998,7 @@ const ProblemPage = () => {
                     </button>
                   ))}
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
                   <button
                     className="px-3 py-1.5 text-sm bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors"
                     onClick={handleResetCode}
@@ -664,7 +1056,7 @@ const ProblemPage = () => {
               </div>
 
               {/* Action Buttons */}
-              <div className="p-4 border-t border-slate-700 flex justify-between bg-slate-800/30">
+              <div className="p-4 border-t border-slate-700 flex justify-between bg-slate-800/30 flex-wrap gap-3">
                 <div className="text-sm text-gray-500">
                   Problem ID: {problemId}
                 </div>
