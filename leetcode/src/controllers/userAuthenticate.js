@@ -57,7 +57,13 @@ const login = async (req,res)=>{
 
         }
         const token = jwt.sign({_id:user._id , emailId:emailId,role: user.role}, process.env.JWT_SECRET_KEY ,{expiresIn:60*60})
-        res.cookie("token", token,{httpOnly:true,secure:true,sameSite: "None", maxAge:7*60*60*1000, path: "/"});
+        res.cookie("token", token, {
+      httpOnly: true,       // JS cannot access → safe
+      secure: true,        // keep false for localhost (no https)
+      sameSite: "none",      // REQUIRED for cross-origin cookies
+      path: "/",            // cookie available everywhere
+      maxAge: 60 * 60 * 1000
+    });
          res.status(201).json({
             user: reply,
             message: "login successfully"

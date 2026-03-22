@@ -16,7 +16,7 @@ problemRouter.delete("/delete/:id",adminMiddleware, deleteProblem)
 
 
 // no need of admin access
-problemRouter.get("/problemById/:id",userMiddleware, getProblemById)  // fetch particular problem
+problemRouter.get("/problemById/:id",adminMiddleware, getProblemById)  // fetch particular problem
 // should we send all info to user related to problem
 problemRouter.get("/getAllProblem",userMiddleware, getAllProblem)  // fetch all problems
 problemRouter.get("/problemSolvedByUser",userMiddleware,solvedAllProblemByUser) 

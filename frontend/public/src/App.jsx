@@ -11,6 +11,7 @@ import ProblemPage from "./pages/ProblemPage";
 import AdminDelete from "./components/AdminDelete";
 import AdminVideo from "./components/AdminVideo";
 import AdminUpload from "./components/AdminUpload";
+import AdminUpdate from "./components/AdminUpdate";
 
 function App(){
   // check if user is authenticated or not if it is authencated then move directly to homepage
@@ -44,6 +45,7 @@ function App(){
              <Route path="/admin/upload/:problemId" element={isAuthenticated && user?.role === 'admin' ? <AdminUpload /> : <Navigate to="/" />} />
           <Route path="/problem/:problemId" element={<ProblemPage/>}></Route>
            <Route path="/admin/video" element={isAuthenticated && user?.role === 'admin' ? <AdminVideo /> : <Navigate to="/" />} />
+           <Route path="/admin/update" element={isAuthenticated && user?.role === 'admin' ? <AdminUpdate/> : <Navigate to="/" />} />
 
     </Routes>
     </>
