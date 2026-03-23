@@ -1,54 +1,7 @@
-// AdminUpdate.jsx - Fixed version with debugging
+// AdminUpdate.jsx - Simple form without react-hook-form (Test button removed)
 import { useState, useEffect } from "react";
-import { useForm, useFieldArray } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import axiosClient from "../utility/axiosClient";
 import { useNavigate } from "react-router";
-
-const problemSchema = z.object({
-  title: z.string().min(1),
-  description: z.string().min(1),
-  difficulty: z.enum(["easy", "medium", "hard"]),
-  tags: z.string().min(1),
-  
-  visibleTestCases: z
-    .array(
-      z.object({
-        input: z.string().min(1),
-        output: z.string().min(1),
-        explanation: z.string().min(1),
-      })
-    )
-    .min(1),
-
-  hiddenTestCases: z
-    .array(
-      z.object({
-        input: z.string().min(1),
-        output: z.string().min(1),
-      })
-    )
-    .min(1),
-
-  startCode: z
-    .array(
-      z.object({
-        language: z.enum(["C++", "Java", "JavaScript"]),
-        initialCode: z.string().min(1),
-      })
-    )
-    .length(3),
-
-  referenceSolution: z
-    .array(
-      z.object({
-        language: z.enum(["C++", "Java", "JavaScript"]),
-        completeCode: z.string().min(1),
-      })
-    )
-    .length(3),
-});
 
 export default function AdminUpdate() {
   const navigate = useNavigate();
@@ -56,42 +9,27 @@ export default function AdminUpdate() {
   const [selectedProblemId, setSelectedProblemId] = useState("");
   const [loading, setLoading] = useState(false);
   const [fetchingProblems, setFetchingProblems] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
 
-  const {
-    register,
-    control,
-    handleSubmit,
-    reset,
-    formState: { errors, isSubmitting },
-  } = useForm({
-    resolver: zodResolver(problemSchema),
-    defaultValues: {
-      startCode: [
-        { language: "C++", initialCode: "" },
-        { language: "Java", initialCode: "" },
-        { language: "JavaScript", initialCode: "" },
-      ],
-      referenceSolution: [
-        { language: "C++", completeCode: "" },
-        { language: "Java", completeCode: "" },
-        { language: "JavaScript", completeCode: "" },
-      ],
-      visibleTestCases: [],
-      hiddenTestCases: [],
-    },
+  // Form state
+  const [formData, setFormData] = useState({
+    title: "",
+    description: "",
+    difficulty: "easy",
+    tags: "array",
+    visibleTestCases: [],
+    hiddenTestCases: [],
+    startCode: [
+      { language: "C++", initialCode: "" },
+      { language: "Java", initialCode: "" },
+      { language: "JavaScript", initialCode: "" },
+    ],
+    referenceSolution: [
+      { language: "C++", completeCode: "" },
+      { language: "Java", completeCode: "" },
+      { language: "JavaScript", completeCode: "" },
+    ],
   });
-
-  const { 
-    fields: visibleFields, 
-    append: appendVisible, 
-    remove: removeVisible 
-  } = useFieldArray({ control, name: "visibleTestCases" });
-
-  const { 
-    fields: hiddenFields, 
-    append: appendHidden, 
-    remove: removeHidden 
-  } = useFieldArray({ control, name: "hiddenTestCases" });
 
   // Fetch all problems on component mount
   useEffect(() => {
@@ -123,12 +61,12 @@ export default function AdminUpdate() {
       const problem = response.data;
       console.log("Fetched problem data:", problem);
       
-      // Format the data to match form structure
-      const formattedData = {
-        title: problem.title,
-        description: problem.description,
-        difficulty: problem.difficulty,
-        tags: problem.tags,
+      // Update form data with fetched problem
+      setFormData({
+        title: problem.title || "",
+        description: problem.description || "",
+        difficulty: problem.difficulty || "easy",
+        tags: problem.tags || "array",
         visibleTestCases: problem.visibleTestCases || [],
         hiddenTestCases: problem.hiddenTestCases || [],
         startCode: problem.startCode || [
@@ -141,10 +79,8 @@ export default function AdminUpdate() {
           { language: "Java", completeCode: "" },
           { language: "JavaScript", completeCode: "" },
         ],
-      };
+      });
       
-      console.log("Formatted data for reset:", formattedData);
-      reset(formattedData);
       setSelectedProblemId(problemId);
     } catch (err) {
       console.error("Error fetching problem:", err);
@@ -154,26 +90,162 @@ export default function AdminUpdate() {
     }
   };
 
-  const onSubmit = async (data) => {
-    console.log("onSubmit called with data:", data);
-    console.log("Selected Problem ID:", selectedProblemId);
+  // Handle input changes
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  // Handle visible test cases
+  const addVisibleTestCase = () => {
+    setFormData(prev => ({
+      ...prev,
+      visibleTestCases: [...prev.visibleTestCases, { input: "", output: "", explanation: "" }]
+    }));
+  };
+
+  const updateVisibleTestCase = (index, field, value) => {
+    const updated = [...formData.visibleTestCases];
+    updated[index][field] = value;
+    setFormData(prev => ({
+      ...prev,
+      visibleTestCases: updated
+    }));
+  };
+
+  const removeVisibleTestCase = (index) => {
+    const updated = formData.visibleTestCases.filter((_, i) => i !== index);
+    setFormData(prev => ({
+      ...prev,
+      visibleTestCases: updated
+    }));
+  };
+
+  // Handle hidden test cases
+  const addHiddenTestCase = () => {
+    setFormData(prev => ({
+      ...prev,
+      hiddenTestCases: [...prev.hiddenTestCases, { input: "", output: "" }]
+    }));
+  };
+
+  const updateHiddenTestCase = (index, field, value) => {
+    const updated = [...formData.hiddenTestCases];
+    updated[index][field] = value;
+    setFormData(prev => ({
+      ...prev,
+      hiddenTestCases: updated
+    }));
+  };
+
+  const removeHiddenTestCase = (index) => {
+    const updated = formData.hiddenTestCases.filter((_, i) => i !== index);
+    setFormData(prev => ({
+      ...prev,
+      hiddenTestCases: updated
+    }));
+  };
+
+  // Handle start code changes
+  const updateStartCode = (index, value) => {
+    const updated = [...formData.startCode];
+    updated[index].initialCode = value;
+    setFormData(prev => ({
+      ...prev,
+      startCode: updated
+    }));
+  };
+
+  // Handle reference solution changes
+  const updateReferenceSolution = (index, value) => {
+    const updated = [...formData.referenceSolution];
+    updated[index].completeCode = value;
+    setFormData(prev => ({
+      ...prev,
+      referenceSolution: updated
+    }));
+  };
+
+  // Validate form before submission
+  const validateForm = () => {
+    if (!formData.title.trim()) {
+      alert("Title is required");
+      return false;
+    }
+    if (!formData.description.trim()) {
+      alert("Description is required");
+      return false;
+    }
+    if (formData.visibleTestCases.length === 0) {
+      alert("At least one visible test case is required");
+      return false;
+    }
+    for (let i = 0; i < formData.visibleTestCases.length; i++) {
+      const tc = formData.visibleTestCases[i];
+      if (!tc.input.trim() || !tc.output.trim() || !tc.explanation.trim()) {
+        alert(`Visible test case ${i + 1}: All fields (input, output, explanation) are required`);
+        return false;
+      }
+    }
+    if (formData.hiddenTestCases.length === 0) {
+      alert("At least one hidden test case is required");
+      return false;
+    }
+    for (let i = 0; i < formData.hiddenTestCases.length; i++) {
+      const tc = formData.hiddenTestCases[i];
+      if (!tc.input.trim() || !tc.output.trim()) {
+        alert(`Hidden test case ${i + 1}: Both input and output are required`);
+        return false;
+      }
+    }
+    for (let i = 0; i < formData.startCode.length; i++) {
+      if (!formData.startCode[i].initialCode.trim()) {
+        alert(`${formData.startCode[i].language} initial code is required`);
+        return false;
+      }
+    }
+    for (let i = 0; i < formData.referenceSolution.length; i++) {
+      if (!formData.referenceSolution[i].completeCode.trim()) {
+        alert(`${formData.referenceSolution[i].language} reference solution is required`);
+        return false;
+      }
+    }
+    return true;
+  };
+
+  // Submit form
+  const onSubmit = async (e) => {
+    e.preventDefault();
+    console.log("Form submitted");
     
     if (!selectedProblemId) {
       alert("Please select a problem to update");
       return;
     }
-
+    
+    if (!validateForm()) {
+      return;
+    }
+    
     try {
+      setSubmitting(true);
       console.log("Making PUT request to:", `/problem/update/${selectedProblemId}`);
-      const response = await axiosClient.put(`/problem/update/${selectedProblemId}`, data);
+      console.log("Request data:", formData);
+      
+      const response = await axiosClient.put(`/problem/update/${selectedProblemId}`, formData);
+      
       console.log("Update response:", response);
-      console.log("Problem updated successfully!");
       alert("Problem updated successfully!");
       navigate("/");
     } catch (err) {
       console.error("Error updating problem:", err);
       console.error("Error response:", err.response);
       alert(err.response?.data?.message || err.response?.data || "Something went wrong");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -210,9 +282,9 @@ export default function AdminUpdate() {
           )}
         </div>
 
-        {/* Update Form - Only show when a problem is selected */}
+        {/* Update Form */}
         {selectedProblemId && (
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+          <form onSubmit={onSubmit} className="space-y-8">
             {loading ? (
               <div className="text-center py-10">Loading problem data...</div>
             ) : (
@@ -225,31 +297,32 @@ export default function AdminUpdate() {
                     <div>
                       <label className="text-sm">Title</label>
                       <input
-                        {...register("title")}
+                        type="text"
+                        name="title"
+                        value={formData.title}
+                        onChange={handleInputChange}
                         className="w-full p-3 rounded-lg bg-[#0d1628] border border-gray-600 text-gray-200"
                       />
-                      {errors.title && (
-                        <p className="text-red-400 text-sm mt-1">{errors.title.message}</p>
-                      )}
                     </div>
 
                     <div>
                       <label className="text-sm">Description</label>
                       <textarea
-                        {...register("description")}
+                        name="description"
+                        value={formData.description}
+                        onChange={handleInputChange}
                         rows={4}
                         className="w-full p-3 rounded-lg bg-[#0d1628] border border-gray-600 text-gray-200"
                       />
-                      {errors.description && (
-                        <p className="text-red-400 text-sm mt-1">{errors.description.message}</p>
-                      )}
                     </div>
 
                     <div className="flex gap-4">
                       <div className="w-1/2">
                         <label className="text-sm">Difficulty</label>
                         <select
-                          {...register("difficulty")}
+                          name="difficulty"
+                          value={formData.difficulty}
+                          onChange={handleInputChange}
                           className="w-full p-3 rounded-lg bg-[#0d1628] border border-gray-600 text-gray-200"
                         >
                           <option value="easy">Easy</option>
@@ -261,7 +334,9 @@ export default function AdminUpdate() {
                       <div className="w-1/2">
                         <label className="text-sm">Tag</label>
                         <select
-                          {...register("tags")}
+                          name="tags"
+                          value={formData.tags}
+                          onChange={handleInputChange}
                           className="w-full p-3 rounded-lg bg-[#0d1628] border border-gray-600 text-gray-200"
                         >
                           <option value="array">Array</option>
@@ -280,7 +355,7 @@ export default function AdminUpdate() {
                     <h2 className="text-2xl font-semibold">Visible Test Cases</h2>
                     <button
                       type="button"
-                      onClick={() => appendVisible({ input: "", output: "", explanation: "" })}
+                      onClick={addVisibleTestCase}
                       className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg"
                     >
                       + Add
@@ -288,15 +363,17 @@ export default function AdminUpdate() {
                   </div>
 
                   <div className="space-y-4 mt-4">
-                    {visibleFields.map((field, i) => (
-                      <div
-                        key={field.id}
-                        className="p-4 bg-[#0d1628] rounded-xl border border-gray-600"
-                      >
+                    {formData.visibleTestCases.length === 0 && (
+                      <div className="text-center py-4 text-yellow-400">
+                        No visible test cases. Please add at least one.
+                      </div>
+                    )}
+                    {formData.visibleTestCases.map((testCase, i) => (
+                      <div key={i} className="p-4 bg-[#0d1628] rounded-xl border border-gray-600">
                         <div className="flex justify-end">
                           <button
                             type="button"
-                            onClick={() => removeVisible(i)}
+                            onClick={() => removeVisibleTestCase(i)}
                             className="text-red-400"
                           >
                             Remove
@@ -304,19 +381,22 @@ export default function AdminUpdate() {
                         </div>
 
                         <input
-                          {...register(`visibleTestCases.${i}.input`)}
+                          value={testCase.input}
+                          onChange={(e) => updateVisibleTestCase(i, "input", e.target.value)}
                           placeholder="Input"
                           className="w-full p-2 mb-2 rounded bg-[#1a2336] border border-gray-600"
                         />
 
                         <input
-                          {...register(`visibleTestCases.${i}.output`)}
+                          value={testCase.output}
+                          onChange={(e) => updateVisibleTestCase(i, "output", e.target.value)}
                           placeholder="Output"
                           className="w-full p-2 mb-2 rounded bg-[#1a2336] border border-gray-600"
                         />
 
                         <textarea
-                          {...register(`visibleTestCases.${i}.explanation`)}
+                          value={testCase.explanation}
+                          onChange={(e) => updateVisibleTestCase(i, "explanation", e.target.value)}
                           placeholder="Explanation"
                           className="w-full p-2 rounded bg-[#1a2336] border border-gray-600"
                         />
@@ -331,7 +411,7 @@ export default function AdminUpdate() {
                     <h2 className="text-2xl font-semibold">Hidden Test Cases</h2>
                     <button
                       type="button"
-                      onClick={() => appendHidden({ input: "", output: "" })}
+                      onClick={addHiddenTestCase}
                       className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg"
                     >
                       + Add
@@ -339,15 +419,17 @@ export default function AdminUpdate() {
                   </div>
 
                   <div className="space-y-4 mt-4">
-                    {hiddenFields.map((field, i) => (
-                      <div
-                        key={field.id}
-                        className="p-4 bg-[#0d1628] rounded-xl border border-gray-600"
-                      >
+                    {formData.hiddenTestCases.length === 0 && (
+                      <div className="text-center py-4 text-yellow-400">
+                        No hidden test cases. Please add at least one.
+                      </div>
+                    )}
+                    {formData.hiddenTestCases.map((testCase, i) => (
+                      <div key={i} className="p-4 bg-[#0d1628] rounded-xl border border-gray-600">
                         <div className="flex justify-end">
                           <button
                             type="button"
-                            onClick={() => removeHidden(i)}
+                            onClick={() => removeHiddenTestCase(i)}
                             className="text-red-400"
                           >
                             Remove
@@ -355,13 +437,15 @@ export default function AdminUpdate() {
                         </div>
 
                         <input
-                          {...register(`hiddenTestCases.${i}.input`)}
+                          value={testCase.input}
+                          onChange={(e) => updateHiddenTestCase(i, "input", e.target.value)}
                           placeholder="Input"
                           className="w-full p-2 mb-2 rounded bg-[#1a2336] border border-gray-600"
                         />
 
                         <input
-                          {...register(`hiddenTestCases.${i}.output`)}
+                          value={testCase.output}
+                          onChange={(e) => updateHiddenTestCase(i, "output", e.target.value)}
                           placeholder="Output"
                           className="w-full p-2 rounded bg-[#1a2336] border border-gray-600"
                         />
@@ -381,14 +465,16 @@ export default function AdminUpdate() {
                       </h3>
 
                       <textarea
-                        {...register(`startCode.${i}.initialCode`)}
+                        value={formData.startCode[i]?.initialCode || ""}
+                        onChange={(e) => updateStartCode(i, e.target.value)}
                         rows={5}
                         className="w-full p-3 rounded bg-[#0d1628] border border-gray-600 font-mono mb-2"
                         placeholder="Initial Code"
                       />
 
                       <textarea
-                        {...register(`referenceSolution.${i}.completeCode`)}
+                        value={formData.referenceSolution[i]?.completeCode || ""}
+                        onChange={(e) => updateReferenceSolution(i, e.target.value)}
                         rows={5}
                         className="w-full p-3 rounded bg-[#0d1628] border border-gray-600 font-mono"
                         placeholder="Reference Solution"
@@ -399,10 +485,10 @@ export default function AdminUpdate() {
 
                 <button 
                   type="submit" 
-                  disabled={isSubmitting}
+                  disabled={submitting}
                   className="w-full py-3 bg-green-600 hover:bg-green-700 rounded-xl text-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isSubmitting ? "Updating..." : "Update Problem"}
+                  {submitting ? "Updating..." : "Update Problem"}
                 </button>
               </>
             )}

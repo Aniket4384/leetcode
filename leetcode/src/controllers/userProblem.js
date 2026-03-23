@@ -54,63 +54,131 @@ const createProblem = async (req, res) => {
     }
 };
 
-const updateProblem  = async(req,res)=>{
-  const {id} =  req.params
- const {title,description,difficulty,tags,
-        visibleTestCases,hiddenTestCases,startCode,
-        referenceSolution, problemCreator
-    } = req.body;
-  try{
-    // frontend sa data ayaga uska check kro shai h ya nhi
+const updateProblem = async (req, res) => {
+  console.log("route hit");
+  const { id } = req.params;
+  const { 
+    title, description, difficulty, tags,
+    visibleTestCases, hiddenTestCases, startCode,
+    referenceSolution, problemCreator 
+  } = req.body;
+  
+  try {
+    // Check if id exists
+    if (!id) {
+      return res.status(400).json({ error: "Invalid id" });
+    }
 
-    if(!id){
-        return res.status(400).send("Invalid id")
-      }
+    // Check if problem exists
+    const DsaProblem = await Problem.findById(id);
+    if (!DsaProblem) {
+      return res.status(404).json({ error: "Problem not found" });
+    }
 
-      const DsaProblem = await Problem.findById(id)
-      if(!DsaProblem){
-        return res.status(404).send("Id not present")
-      }
-    for(const{language,completeCode} of referenceSolution){
-
+    // Validate reference solutions with test cases
+    if (referenceSolution && referenceSolution.length > 0 && visibleTestCases && visibleTestCases.length > 0) {
+      console.log("Validating reference solutions...");
+      
+      for (const { language, completeCode } of referenceSolution) {
         const languageId = getLanguageById(language);
-          
-       
-        const submissions = visibleTestCases.map((testcase)=>({
-            source_code:completeCode,
+        
+        if (!languageId) {
+          return res.status(400).json({ error: `Invalid language: ${language}` });
+        }
+
+        try {
+          // Create submissions for visible test cases
+          const submissions = visibleTestCases.map((testcase) => ({
+            source_code: completeCode,
             language_id: languageId,
             stdin: testcase.input,
             expected_output: testcase.output
-        }));
+          }));
 
-
-        const submitResult = await submitBatch(submissions);
-        const resultToken = submitResult.map((value)=> value.token);
-
-
-       const testResult = await submitToken(resultToken);
-
-
-       for(const test of testResult){
-        if(test.status_id!=3){
-         return res.status(400).send(test.status_id);
+          console.log(`Submitting ${submissions.length} test cases for ${language}`);
+          
+          // Submit batch and get tokens
+          const submitResult = await submitBatch(submissions);
+          console.log("Submit result:", submitResult);
+          
+          if (!submitResult || !Array.isArray(submitResult)) {
+            throw new Error("Invalid response from submitBatch");
+          }
+          
+          const resultToken = submitResult.map((value) => value.token);
+          console.log("Result tokens:", resultToken);
+          
+          // Wait for results to be ready
+          await new Promise(resolve => setTimeout(resolve, 3000));
+          
+          // Get test results - FIX: Make sure submitToken handles array of tokens
+          let testResult;
+          try {
+            testResult = await submitToken(resultToken);
+            console.log("Test results:", testResult);
+          } catch (tokenError) {
+            console.error("Error getting test results:", tokenError);
+            throw new Error("Failed to retrieve test results");
+          }
+          
+          // Check test results
+          if (testResult && Array.isArray(testResult)) {
+            for (const test of testResult) {
+              if (test.status && test.status.id !== 3) {
+                console.log(`Test failed for ${language}:`, test);
+                return res.status(400).json({
+                  error: `Reference solution for ${language} failed test cases`,
+                  status: test.status.description || "Test failed",
+                  details: test
+                });
+              }
+            }
+          } else {
+            console.log("No test results or invalid format");
+          }
+          
+        } catch (validationError) {
+          console.error(`Validation error for ${language}:`, validationError);
+          return res.status(400).json({
+            error: `Failed to validate reference solution for ${language}`,
+            details: validationError.message
+          });
         }
-       }
-
       }
+    }
 
-      const newProblem = await Problem.findByIdAndUpdate(id,{...req.body},{runValidators:true,new:true}) // update ma validator by default nhi chalata isliya true kiya
-      // new document retrun kardena --> new:true
-      res.status(200).send(newProblem)
-
+    // Update the problem
+    const updatedProblem = await Problem.findByIdAndUpdate(
+      id,
+      {
+        title,
+        description,
+        difficulty,
+        tags,
+        visibleTestCases,
+        hiddenTestCases,
+        startCode,
+        referenceSolution,
+        problemCreator
+      },
+      { runValidators: true, new: true }
+    );
+    
+    console.log("Problem updated successfully");
+    res.status(200).json({
+      success: true,
+      message: "Problem updated successfully",
+      problem: updatedProblem
+    });
+    
+  } catch (err) {
+    console.error("Error updating problem:", err);
+    res.status(500).json({ 
+      error: "Internal server error",
+      message: err.message 
+    });
   }
-  catch(err){
-    res.status(404).send("Error : " +err)
-
-  }
-
-}
-
+};
 const deleteProblem = async(req,res)=>{
   const {id} = req.params;
   try{
