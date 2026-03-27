@@ -22,6 +22,7 @@ const ProblemPage = () => {
   const [fontSize, setFontSize] = useState(14);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [codePerLanguage, setCodePerLanguage] = useState({});
   const editorRef = useRef(null);
   let {problemId} = useParams();
 
@@ -38,12 +39,12 @@ const ProblemPage = () => {
   }, []);
 
   // Get code template from problem data
-  const getCodeTemplate = () => {
+  const getCodeTemplate = (language = selectedLanguage) => {
     if (problem && problem.startCode && problem.startCode.length > 0) {
       const template = problem.startCode.find(sc => {
-        if (sc.language === "c++" && selectedLanguage === 'cpp') return true;
-        if (sc.language === "java" && selectedLanguage === 'java') return true;
-        if (sc.language === "javascript" && selectedLanguage === 'javascript') return true;
+        if (sc.language === "c++" && language === 'cpp') return true;
+        if (sc.language === "java" && language === 'java') return true;
+        if (sc.language === "javascript" && language === 'javascript') return true;
         return false;
       });
       
@@ -59,7 +60,7 @@ const ProblemPage = () => {
       cpp: '#include <iostream>\nusing namespace std;\n\nint main() {\n    // Write your solution here\n    return 0;\n}'
     };
     
-    return fallbackTemplates[selectedLanguage] || '// Write your code here';
+    return fallbackTemplates[language] || '// Write your code here';
   };
 
   useEffect(() => {
@@ -69,23 +70,31 @@ const ProblemPage = () => {
         const response = await axiosClient.get(`/problem/problemById/${problemId}`);
         setProblem(response.data);
         
-        // ✅ Only set initial code, no other pre-filled solutions
-        if (response.data.startCode && response.data.startCode.length > 0) {
-          const template = response.data.startCode.find(sc => {
-            if (sc.language === "c++" && selectedLanguage === 'cpp') return true;
-            if (sc.language === "java" && selectedLanguage === 'java') return true;
-            if (sc.language === "javascript" && selectedLanguage === 'javascript') return true;
-            return false;
-          });
-          
-          if (template && template.initialCode) {
-            setCode(template.initialCode);
+        // Initialize code per language
+        const initialCodePerLanguage = {};
+        const languages = ['javascript', 'java', 'cpp'];
+        
+        languages.forEach(lang => {
+          if (response.data.startCode && response.data.startCode.length > 0) {
+            const template = response.data.startCode.find(sc => {
+              if (sc.language === "c++" && lang === 'cpp') return true;
+              if (sc.language === "java" && lang === 'java') return true;
+              if (sc.language === "javascript" && lang === 'javascript') return true;
+              return false;
+            });
+            
+            if (template && template.initialCode) {
+              initialCodePerLanguage[lang] = template.initialCode;
+            } else {
+              initialCodePerLanguage[lang] = getCodeTemplate(lang);
+            }
           } else {
-            setCode(getCodeTemplate());
+            initialCodePerLanguage[lang] = getCodeTemplate(lang);
           }
-        } else {
-          setCode(getCodeTemplate());
-        }
+        });
+        
+        setCodePerLanguage(initialCodePerLanguage);
+        setCode(initialCodePerLanguage[selectedLanguage]);
         
         setLoading(false);
       } catch (error) {
@@ -104,25 +113,25 @@ const ProblemPage = () => {
     }
   }, [activeLeftTab]);
 
-  // Update code when language changes - from problem's startCode
-  useEffect(() => {
-    if (problem && problem.startCode && problem.startCode.length > 0) {
-      const template = problem.startCode.find(sc => {
-        if (sc.language === "c++" && selectedLanguage === 'cpp') return true;
-        if (sc.language === "java" && selectedLanguage === 'java') return true;
-        if (sc.language === "javascript" && selectedLanguage === 'javascript') return true;
-        return false;
-      });
-      
-      if (template && template.initialCode) {
-        setCode(template.initialCode);
-      } else {
-        setCode(getCodeTemplate());
-      }
+  // Update code when language changes - preserve user's code per language
+  const handleLanguageChange = (language) => {
+    // Save current code for the current language before switching
+    setCodePerLanguage(prev => ({
+      ...prev,
+      [selectedLanguage]: code
+    }));
+    
+    // Switch to new language
+    setSelectedLanguage(language);
+    
+    // Load code for the new language (either user's existing code or template)
+    const existingCode = codePerLanguage[language];
+    if (existingCode) {
+      setCode(existingCode);
     } else {
-      setCode(getCodeTemplate());
+      setCode(getCodeTemplate(language));
     }
-  }, [selectedLanguage, problem]);
+  };
 
   const fetchSubmissions = async () => {
     setLoadingSubmissions(true);
@@ -160,14 +169,15 @@ const ProblemPage = () => {
 
   const handleEditorChange = (value) => {
     setCode(value || '');
+    // Save to language-specific code storage
+    setCodePerLanguage(prev => ({
+      ...prev,
+      [selectedLanguage]: value || ''
+    }));
   };
 
   const handleEditorDidMount = (editor) => {
     editorRef.current = editor;
-  };
-
-  const handleLanguageChange = (language) => {
-    setSelectedLanguage(language);
   };
 
   const handleRun = async () => {
@@ -324,7 +334,12 @@ const ProblemPage = () => {
   };
 
   const handleResetCode = () => {
-    setCode(getCodeTemplate());
+    const template = getCodeTemplate(selectedLanguage);
+    setCode(template);
+    setCodePerLanguage(prev => ({
+      ...prev,
+      [selectedLanguage]: template
+    }));
   };
 
   // Mobile menu tabs
@@ -729,7 +744,7 @@ const ProblemPage = () => {
     );
   }
 
-  // Desktop view (original layout with improvements)
+  // Desktop view
   return (
     <div className="h-screen flex bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-gray-100">
       {/* Left Panel */}

@@ -1,18 +1,14 @@
 import { useState, useRef, useEffect } from 'react';
 import { Pause, Play } from 'lucide-react';
 
-
-
 const Editorial = ({ secureUrl, thumbnailUrl, duration }) => {
-
-
   const videoRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [isHovering, setIsHovering] = useState(false);
 
-  // Format seconds to MM:SS
   const formatTime = (seconds) => {
+    if (!seconds && seconds !== 0) return "0:00";
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
@@ -29,7 +25,6 @@ const Editorial = ({ secureUrl, thumbnailUrl, duration }) => {
     }
   };
 
-  // Update current time during playback
   useEffect(() => {
     const video = videoRef.current;
     
@@ -37,19 +32,27 @@ const Editorial = ({ secureUrl, thumbnailUrl, duration }) => {
       if (video) setCurrentTime(video.currentTime);
     };
     
+    const handleEnded = () => {
+      setIsPlaying(false);
+      setCurrentTime(0);
+    };
+    
     if (video) {
       video.addEventListener('timeupdate', handleTimeUpdate);
-      return () => video.removeEventListener('timeupdate', handleTimeUpdate);
+      video.addEventListener('ended', handleEnded);
+      return () => {
+        video.removeEventListener('timeupdate', handleTimeUpdate);
+        video.removeEventListener('ended', handleEnded);
+      };
     }
   }, []);
 
   return (
     <div 
-      className="relative w-full max-w-2xl mx-auto rounded-xl overflow-hidden shadow-lg"
+      className="relative w-full max-w-full rounded-xl overflow-hidden shadow-lg bg-black"
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
     >
-      {/* Video Element */}
       <video
         ref={videoRef}
         src={secureUrl}
@@ -58,50 +61,47 @@ const Editorial = ({ secureUrl, thumbnailUrl, duration }) => {
         className="w-full aspect-video bg-black cursor-pointer"
       />
       
-      {/* Video Controls Overlay */}
       <div 
-        className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4 transition-opacity ${
+        className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3 sm:p-4 transition-opacity duration-300 ${
           isHovering || !isPlaying ? 'opacity-100' : 'opacity-0'
         }`}
       >
-        {/* Play/Pause Button */}
-        <button
-          onClick={togglePlayPause}
-          className="btn btn-circle btn-primary mr-3"
-          aria-label={isPlaying ? "Pause" : "Play"}
-        >
-          {isPlaying ? (
-            <Pause/>
-          ) : (
-            <Play/>
-          )}
-        </button>
-        
-        {/* Progress Bar */}
-        <div className="flex items-center w-full mt-2">
-          <span className="text-white text-sm mr-2">
-            {formatTime(currentTime)}
-          </span>
-          <input
-            type="range"
-            min="0"
-            max={duration}
-            value={currentTime}
-            onChange={(e) => {
-              if (videoRef.current) {
-                videoRef.current.currentTime = Number(e.target.value);
-              }
-            }}
-            className="range range-primary range-xs flex-1"
-          />
-          <span className="text-white text-sm ml-2">
-            {formatTime(duration)}
-          </span>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={togglePlayPause}
+            className="btn btn-circle btn-primary btn-sm sm:btn-md"
+            aria-label={isPlaying ? "Pause" : "Play"}
+          >
+            {isPlaying ? (
+              <Pause size={16} className="sm:w-5 sm:h-5" />
+            ) : (
+              <Play size={16} className="sm:w-5 sm:h-5" />
+            )}
+          </button>
+          
+          <div className="flex-1">
+            <div className="flex items-center gap-2 text-white text-xs sm:text-sm">
+              <span>{formatTime(currentTime)}</span>
+              <input
+                type="range"
+                min="0"
+                max={duration || 0}
+                value={currentTime}
+                onChange={(e) => {
+                  if (videoRef.current) {
+                    videoRef.current.currentTime = Number(e.target.value);
+                    setCurrentTime(Number(e.target.value));
+                  }
+                }}
+                className="flex-1 h-1 sm:h-1.5 bg-white/30 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-2 sm:[&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-2 sm:[&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-blue-500"
+              />
+              <span>{formatTime(duration)}</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   );
 };
-
 
 export default Editorial;
